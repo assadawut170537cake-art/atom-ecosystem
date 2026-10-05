@@ -1,0 +1,54 @@
+﻿starting test server on 127.0.0.1:50785 (db=C:\Users\CJN_AS~1\AppData\Local\Temp\atom-api-test-432aa3_q\test.db)
+
+[1] health
+  PASS  GET /health -> 200
+  PASS  health reports ok
+
+[2] auth
+  PASS  no secret -> 401
+  PASS  bad secret -> 401
+
+[3] providers
+  PASS  GET /providers -> 200
+  PASS  ollama advertised
+
+[4] chat validation
+  PASS  empty message -> 400
+  PASS  bad agent_id -> 400
+  PASS  bad mode -> 400
+
+[5] handoff (no LLM call)
+  PASS  handoff -> 200
+  PASS  handoff=friday
+  PASS  handoff provider=system
+  PASS  longest phrase wins -> ultron
+  PASS  bare agent name is not a handoff
+
+[6] real LLM turn (local ollama)
+  PASS  chat -> 200
+  PASS  reply non-empty
+  PASS  provider reported
+  PASS  sources is list
+        reply: **อะตอมอยู่**
+
+ว่าไงลูกพี่? มาได้เลย จะงานแผน จะโค้ดหนัก จะสเปกเท่ๆ หรือแค่มาเมาท์มอย อยากให้ดูแบบไหนบอกมา
+
+ไม่ต้องห่วงเ
+
+[7] chat persisted
+  PASS  history -> 200
+  PASS  history has turns
+
+[8] persona loaded
+  PASS  atom persona non-empty
+  PASS  friday persona non-empty
+  PASS  ultron persona non-empty
+  PASS  missing persona -> empty
+
+[9] sync push/pull still works
+  PASS  push -> 200
+  PASS  pull contains key
+
+==============================================
+  passed: 26   failed: 0
+==============================================
