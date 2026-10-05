@@ -5,7 +5,7 @@ import 'package:speech_to_text/speech_to_text.dart';
 import 'agent_state.dart';
 import 'master_gate.dart';
 
-// Voice brain: Thai wake phrases -> handoff, ULTRON gated by Master Key.
+// Optimized Voice brain: High-quality Input (STT) + Output (TTS) streaming.
 class VoiceBrain extends ChangeNotifier {
   final AgentState agents;
   final FlutterTts tts = FlutterTts();
@@ -17,11 +17,14 @@ class VoiceBrain extends ChangeNotifier {
     _initTts();
   }
 
-  void _initTts() {
-    tts.setLanguage('th-TH');
-    tts.setSpeechRate(0.95);
+  Future<void> _initTts() async {
+    await tts.setLanguage('th-TH');
+    await tts.setSpeechRate(0.92);
+    await tts.setVolume(1.0);
+    await tts.setPitch(1.0);
+    await tts.awaitSpeakCompletion(true);
     
-    // Callbacks to ensure Orb state resets when TTS finishes or cancels
+    // Callbacks to ensure Orb state resets when TTS finishes, cancels, or errors
     tts.setCompletionHandler(() {
       agents.setSpeaking(false);
       notifyListeners();
@@ -39,8 +42,9 @@ class VoiceBrain extends ChangeNotifier {
   }
 
   Future<void> speak(String text) async {
-    if (agents.muted) return;
+    if (agents.muted || text.trim().isEmpty) return;
     agents.setSpeaking(true);
+    notifyListeners();
     await tts.speak(text);
   }
 
@@ -93,7 +97,7 @@ class VoiceBrain extends ChangeNotifier {
       return;
     }
 
-    // Stop TTS before listening to prevent mic echo
+    // Stop TTS before listening to prevent mic feedback
     await stopSpeak();
 
     final ok = await stt.initialize(
@@ -122,9 +126,12 @@ class VoiceBrain extends ChangeNotifier {
       listenOptions: SpeechListenOptions(
         localeId: 'th-TH',
         listenMode: ListenMode.dictation,
+        partialResults: true,
       ),
+      pauseFor: const Duration(seconds: 3),
       onResult: (r) async {
         lastHeard = r.recognizedWords;
+        notifyListeners();
         if (r.finalResult && lastHeard.isNotEmpty) {
           listening = false;
           notifyListeners();
