@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../core/config.dart';
 import '../services/agent_state.dart';
 import '../services/master_gate.dart';
+import '../services/pipeline_coordinator.dart';
 import '../widgets/agent_orb.dart';
 import 'chat_screen.dart';
 
@@ -297,18 +298,37 @@ class _HomeScreenState extends State<HomeScreen> {
                 const SizedBox(height: 16),
 
                 // Live transcript card
-                Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF141414),
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: Colors.white12),
-                  ),
-                  child: Text(
-                    _lastTranscript,
-                    textAlign: TextAlign.center,
-                    style: const TextStyle(color: Colors.white, fontSize: 14),
+                GestureDetector(
+                  onLongPress: () async {
+                    if (_lastTranscript.contains('แตะที่ลูกแก้ว')) return;
+                    final pipeline = PipelineCoordinator();
+                    final success = await pipeline.ingestMemory(
+                      _lastTranscript,
+                      customId: 'voice_${DateTime.now().millisecondsSinceEpoch}',
+                    );
+                    if (context.mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text(success 
+                              ? '✅ บันทึกคำสั่งเสียงลง Supermemory สำเร็จ!' 
+                              : '❌ ไม่สามารถบันทึกความจำได้ (ตรวจสอบ API Key)'),
+                        ),
+                      );
+                    }
+                  },
+                  child: Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF141414),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: Colors.white12),
+                    ),
+                    child: Text(
+                      _lastTranscript,
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(color: Colors.white, fontSize: 14),
+                    ),
                   ),
                 ),
 

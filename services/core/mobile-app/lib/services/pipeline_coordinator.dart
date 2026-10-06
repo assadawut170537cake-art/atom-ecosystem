@@ -234,6 +234,41 @@ class PipelineCoordinator {
     return [];
   }
 
+  Future<bool> ingestMemory(String content, {String customId = ''}) async {
+    const apiKey = String.fromEnvironment('SUPERMEMORY_API_KEY');
+    if (apiKey.isEmpty) {
+      debugPrint('No SUPERMEMORY_API_KEY set. Cannot ingest memory.');
+      return false;
+    }
+
+    try {
+      final res = await http.post(
+        Uri.parse('https://api.supermemory.ai/v3/documents'),
+        headers: {
+          'Authorization': 'Bearer $apiKey',
+          'Content-Type': 'application/json',
+        },
+        body: jsonEncode({
+          'content': content,
+          'containerTag': 'jarvis_core',
+          'taskType': 'memory',
+          'dreaming': 'instant',
+          if (customId.isNotEmpty) 'customId': customId,
+        }),
+      );
+
+      if (res.statusCode == 200 || res.statusCode == 201) {
+        debugPrint('Successfully ingested memory to Supermemory');
+        return true;
+      } else {
+        debugPrint('Supermemory ingest failed: ${res.statusCode} ${res.body}');
+      }
+    } catch (e) {
+      debugPrint('Supermemory ingest error: $e');
+    }
+    return false;
+  }
+
   Future<PipelineExecutionResult> _executeStep4DecisionAndSynthesis(
     String prompt,
     RouterDecision decision,

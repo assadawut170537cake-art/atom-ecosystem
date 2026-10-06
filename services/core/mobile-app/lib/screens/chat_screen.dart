@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../services/agent_state.dart';
+import '../services/pipeline_coordinator.dart';
 
 // Chat that shares the global VoiceBrain & syncs to cloud-core chat_history.
 class ChatScreen extends StatefulWidget {
@@ -117,17 +118,35 @@ class _ChatScreenState extends State<ChatScreen> {
                 final me = m.role == 'user';
                 return Align(
                   alignment: me ? Alignment.centerRight : Alignment.centerLeft,
-                  child: Container(
-                    margin: const EdgeInsets.symmetric(vertical: 4),
-                    padding: const EdgeInsets.all(10),
-                    decoration: BoxDecoration(
-                      color: me
-                          ? const Color(0xFF1E3A5F)
-                          : const Color(0xFF1B1B1B),
-                      borderRadius: BorderRadius.circular(12),
+                  child: GestureDetector(
+                    onLongPress: () async {
+                      final pipeline = PipelineCoordinator();
+                      final success = await pipeline.ingestMemory(
+                        m.text,
+                        customId: 'msg_${DateTime.now().millisecondsSinceEpoch}',
+                      );
+                      if (context.mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text(success 
+                                ? '✅ บันทึกความจำลง Supermemory สำเร็จ!' 
+                                : '❌ ไม่สามารถบันทึกความจำได้ (ตรวจสอบ API Key)'),
+                          ),
+                        );
+                      }
+                    },
+                    child: Container(
+                      margin: const EdgeInsets.symmetric(vertical: 4),
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: me
+                            ? const Color(0xFF1E3A5F)
+                            : const Color(0xFF1B1B1B),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Text(m.text,
+                          style: const TextStyle(color: Colors.white)),
                     ),
-                    child: Text(m.text,
-                        style: const TextStyle(color: Colors.white)),
                   ),
                 );
               },
