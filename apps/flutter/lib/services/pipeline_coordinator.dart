@@ -300,29 +300,52 @@ class PipelineCoordinator {
     }
 
     try {
-      final model = GenerativeModel(
-        model: 'gemini-1.5-flash',
-        apiKey: apiKey,
-        systemInstruction: Content.system('''
-คุณคือผู้ช่วย AI ส่วนตัวของ "อัษฎาวุธ เมืองซอง (ลูกพี่/บอส)" ทำงานร่วมกับระบบนิเวศ J.A.R.V.I.S. และ F.R.I.D.A.Y.
-หน้าที่ของคุณคือตอบคำถามและทำงานตามที่ได้รับมอบหมาย โดยใช้ข้อมูลอ้างอิงจากความจำในอดีต (ถ้ามี)
-ตอบให้กระชับ ชาญฉลาด และเรียกผู้ใช้ว่า "ลูกพี่" หรือ "บอส" เสมอ
-'''),
-      );
-
       final fullPrompt = contextStr.isNotEmpty 
           ? '$contextStr\n\nคำสั่งล่าสุดจากบอส: $prompt'
           : 'คำสั่งล่าสุดจากบอส: $prompt';
 
-      final response = await model.generateContent([Content.text(fullPrompt)]);
-      final reply = response.text ?? 'ไม่มีการตอบสนองจากสมองหลักครับ';
+      final requestBody = {
+        "model": "MiniMaxAI/MiniMax-M2.7",
+        "messages": [
+          {
+            "role": "system",
+            "content": '''คุณคือผู้ช่วย AI ส่วนตัวของ "อัษฎาวุธ เมืองซอง (ลูกพี่/บอส)" ทำงานร่วมกับระบบนิเวศ J.A.R.V.I.S. และ F.R.I.D.A.Y.
+หน้าที่ของคุณคือตอบคำถามและทำงานตามที่ได้รับมอบหมาย โดยใช้ข้อมูลอ้างอิงจากความจำในอดีต (ถ้ามี)
+ตอบให้กระชับ ชาญฉลาด และเรียกผู้ใช้ว่า "ลูกพี่" หรือ "บอส" เสมอ'''
+          },
+          {
+            "role": "user",
+            "content": fullPrompt
+          }
+        ]
+      };
 
-      if (reply.isNotEmpty) {
+      final res = await http.post(
+        Uri.parse('https://inference.dahl.global/v1/chat/completions'),
+        headers: {
+          'Authorization': 'Bearer $apiKey',
+          'Content-Type': 'application/json',
+        },
+        body: jsonEncode(requestBody),
+      );
+
+      String reply = 'ไม่มีการตอบสนองจากสมองหลักครับ';
+      if (res.statusCode == 200) {
+        final data = jsonDecode(utf8.decode(res.bodyBytes));
+        if (data['choices'] != null && data['choices'].isNotEmpty) {
+          reply = data['choices'][0]['message']['content'] ?? reply;
+        }
+      } else {
+        debugPrint('Dahl API failed: ${res.statusCode} ${res.body}');
+        reply = 'เกิดข้อผิดพลาดจาก API: ${res.statusCode}';
+      }
+
+      if (reply.isNotEmpty && res.statusCode == 200) {
          await ingestMemory("สรุปการตอบกลับ: $reply", containerTag: "jarvis_core", taskType: "memory");
       }
 
       return PipelineExecutionResult(
-        success: true,
+        success: res.statusCode == 200,
         message: reply,
         executedStep: 'STEP_4_LLM_GENERATION',
         modeUsed: mode,
@@ -332,7 +355,7 @@ class PipelineCoordinator {
     } catch (e) {
       return PipelineExecutionResult(
         success: false,
-        message: 'เกิดข้อผิดพลาดในการเชื่อมต่อ Gemini: $e',
+        message: 'เกิดข้อผิดพลาดในการเชื่อมต่อ AI: $e',
         executedStep: 'STEP_4_LLM_GENERATION',
         modeUsed: mode,
         confidenceScore: 0.0,

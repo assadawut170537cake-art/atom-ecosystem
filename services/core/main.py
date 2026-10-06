@@ -42,7 +42,7 @@ GEMINI_LIVE_WS_URL = os.getenv(
 )
 GEMINI_LIVE_MODEL = os.getenv(
     "GEMINI_LIVE_MODEL",
-    "models/gemini-2.5-flash-native-audio-preview-09-2025"
+    "models/gemini-3.8-live" # updated to gemini-3.8-live as requested
 )
 
 AGENT_PROMPTS_DIR = Path(__file__).parent / "agents"
