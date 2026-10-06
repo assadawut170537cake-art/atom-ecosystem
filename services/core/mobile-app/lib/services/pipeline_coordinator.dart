@@ -160,7 +160,7 @@ class PipelineCoordinator {
 
     return RouterDecision(
       intent: IntentType.conversationFallback,
-      confidenceScore = 0.80,
+      confidenceScore: 0.80,
       extractedQuery: trimmed,
     );
   }
@@ -193,11 +193,45 @@ class PipelineCoordinator {
     RouterDecision decision,
     ExecutionMode mode,
   ) async {
-    // Simulating Vector retrieval
-    return [
-      VectorRecord(id: '1', content: 'ผู้ใช้ชอบเขียนโปรแกรมด้วย Flutter และ Kotlin', similarityScore: 0.88),
-      VectorRecord(id: '2', content: 'ระบบอะตอมใช้สถาปัตยกรรม Hybrid Pipeline', similarityScore: 0.72),
-    ];
+    const apiKey = String.fromEnvironment('SUPERMEMORY_API_KEY');
+    if (apiKey.isEmpty) {
+      debugPrint('No SUPERMEMORY_API_KEY set. Returning empty vector records.');
+      return [];
+    }
+
+    try {
+      final res = await http.post(
+        Uri.parse('https://api.supermemory.ai/v3/search'),
+        headers: {
+          'Authorization': 'Bearer $apiKey',
+          'Content-Type': 'application/json',
+        },
+        body: jsonEncode({
+          'q': decision.extractedQuery,
+          'containerTag': 'atom-flutter-app',
+        }),
+      );
+
+      if (res.statusCode == 200) {
+        final data = jsonDecode(res.body);
+        final results = data['results'] as List? ?? [];
+        return results.map((item) {
+          final content = item['memory'] ?? item['chunk'] ?? item['content'] ?? '';
+          final score = (item['similarity'] as num?)?.toDouble() ?? (item['score'] as num?)?.toDouble() ?? 1.0;
+          return VectorRecord(
+            id: item['id']?.toString() ?? '',
+            content: content.toString(),
+            similarityScore: score,
+          );
+        }).toList();
+      } else {
+        debugPrint('Supermemory search failed: ${res.statusCode} ${res.body}');
+      }
+    } catch (e) {
+      debugPrint('Supermemory search error: $e');
+    }
+
+    return [];
   }
 
   Future<PipelineExecutionResult> _executeStep4DecisionAndSynthesis(

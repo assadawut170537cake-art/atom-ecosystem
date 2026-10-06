@@ -28,10 +28,10 @@ class _HomeScreenState extends State<HomeScreen> {
   Future<void> _handleVoiceResult(String text) async {
     if (!mounted) return;
     setState(() => _lastTranscript = 'คุณ: "$text"');
-    
+
     final api = widget.agents.api;
     final reply = _localReply(text);
-    
+
     try {
       if (api != null && api.secret.isNotEmpty) {
         final session = 'mobile-${widget.agents.agentId}';
@@ -215,7 +215,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                   child: ListenableBuilder(
                     listenable: voice,
-                    builder: (_, __) => AgentOrb(
+                    builder: (_, _) => AgentOrb(
                       agent: widget.agents.agent,
                       speaking: widget.agents.speaking,
                       muted: widget.agents.muted,
@@ -223,16 +223,19 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                 ),
                 const SizedBox(height: 16),
-                
+
                 // Voice status indicator
                 ListenableBuilder(
                   listenable: voice,
-                  builder: (_, __) {
+                  builder: (_, _) {
                     if (voice.listening) {
                       return Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 6,
+                        ),
                         decoration: BoxDecoration(
-                          color: Colors.red.withOpacity(0.2),
+                          color: Colors.red.withValues(alpha: 0.2),
                           borderRadius: BorderRadius.circular(16),
                           border: Border.all(color: Colors.redAccent),
                         ),
@@ -243,7 +246,11 @@ class _HomeScreenState extends State<HomeScreen> {
                             SizedBox(width: 6),
                             Text(
                               'กำลังฟังเสียงของคุณ...',
-                              style: TextStyle(color: Colors.redAccent, fontSize: 13, fontWeight: FontWeight.bold),
+                              style: TextStyle(
+                                color: Colors.redAccent,
+                                fontSize: 13,
+                                fontWeight: FontWeight.bold,
+                              ),
                             ),
                           ],
                         ),
@@ -251,9 +258,12 @@ class _HomeScreenState extends State<HomeScreen> {
                     }
                     if (widget.agents.speaking) {
                       return Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 6,
+                        ),
                         decoration: BoxDecoration(
-                          color: a.color.withOpacity(0.2),
+                          color: a.color.withValues(alpha: 0.2),
                           borderRadius: BorderRadius.circular(16),
                           border: Border.all(color: a.color),
                         ),
@@ -264,7 +274,11 @@ class _HomeScreenState extends State<HomeScreen> {
                             const SizedBox(width: 6),
                             Text(
                               '${a.name} กำลังพูด...',
-                              style: TextStyle(color: a.color, fontSize: 13, fontWeight: FontWeight.bold),
+                              style: TextStyle(
+                                color: a.color,
+                                fontSize: 13,
+                                fontWeight: FontWeight.bold,
+                              ),
                             ),
                           ],
                         ),
@@ -272,13 +286,16 @@ class _HomeScreenState extends State<HomeScreen> {
                     }
                     return Text(
                       '⚡ แตะลูกแก้ว Orb หรือปุ่มไมค์เพื่อสั่งงานด้วยเสียง',
-                      style: TextStyle(color: Colors.white.withOpacity(0.6), fontSize: 12),
+                      style: TextStyle(
+                        color: Colors.white.withValues(alpha: 0.6),
+                        fontSize: 12,
+                      ),
                     );
                   },
                 ),
-                
+
                 const SizedBox(height: 16),
-                
+
                 // Live transcript card
                 Container(
                   width: double.infinity,
@@ -321,8 +338,10 @@ class _HomeScreenState extends State<HomeScreen> {
                   children: [
                     ListenableBuilder(
                       listenable: voice,
-                      builder: (_, __) => FloatingActionButton.extended(
-                        backgroundColor: voice.listening ? Colors.redAccent : a.color,
+                      builder: (_, _) => FloatingActionButton.extended(
+                        backgroundColor: voice.listening
+                            ? Colors.redAccent
+                            : a.color,
                         onPressed: () => voice.toggleListen(
                           onResult: _handleVoiceResult,
                           askMasterKey: widget.askMasterKey,
@@ -333,7 +352,10 @@ class _HomeScreenState extends State<HomeScreen> {
                         ),
                         label: Text(
                           voice.listening ? 'กำลังฟัง...' : 'กดเพื่อพูด',
-                          style: const TextStyle(color: Colors.black, fontWeight: FontWeight.bold),
+                          style: const TextStyle(
+                            color: Colors.black,
+                            fontWeight: FontWeight.bold,
+                          ),
                         ),
                       ),
                     ),

@@ -127,8 +127,8 @@ class VoiceBrain extends ChangeNotifier {
         localeId: 'th-TH',
         listenMode: ListenMode.dictation,
         partialResults: true,
+        pauseFor: const Duration(seconds: 3),
       ),
-      pauseFor: const Duration(seconds: 3),
       onResult: (r) async {
         lastHeard = r.recognizedWords;
         notifyListeners();
