@@ -5,8 +5,8 @@ import '../services/agent_state.dart';
 import '../services/master_gate.dart';
 import '../widgets/agent_orb.dart';
 import '../widgets/memory_save_button.dart';
-import '../widgets/memory_settings_form.dart';
 import 'chat_screen.dart';
+import 'memory_screen.dart';
 
 // OLED black home: interactive orb + global voice brain + settings.
 class HomeScreen extends StatefulWidget {
@@ -396,8 +396,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 const SizedBox(height: 20),
                 
                 // Memory Settings Custom Input Form
-                const MemorySettingsForm(),
-                
+                // (Moved to Memory Screen)
                 const SizedBox(height: 20),
 
                 Wrap(
@@ -454,6 +453,23 @@ class _HomeScreenState extends State<HomeScreen> {
                       ),
                       icon: const Icon(Icons.chat),
                       label: const Text('แชทพิมพ์'),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    OutlinedButton.icon(
+                      onPressed: () => Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (_) => const MemoryScreen()),
+                      ),
+                      icon: const Icon(Icons.auto_awesome_mosaic, color: Colors.blueAccent),
+                      label: const Text('จัดการความทรงจำ', style: TextStyle(color: Colors.blueAccent)),
+                      style: OutlinedButton.styleFrom(
+                        side: const BorderSide(color: Colors.blueAccent),
+                      ),
                     ),
                   ],
                 ),
