@@ -1,0 +1,93 @@
+plugins {
+    id("com.android.application")
+    id("org.jetbrains.kotlin.android")
+    id("com.google.devtools.ksp")
+}
+
+android {
+    namespace = "online.assadawut.atom"
+    compileSdk = 34
+
+    defaultConfig {
+        applicationId = "online.assadawut.atom"
+        minSdk = 26
+        targetSdk = 34
+        versionCode = 1
+        versionName = "1.0"
+
+        vectorDrawables {
+            useSupportLibrary = true
+        }
+    }
+
+    buildTypes {
+        release {
+            isMinifyEnabled = false
+            proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
+        }
+    }
+    compileOptions {
+        sourceCompatibility = JavaVersion.VERSION_17
+        targetCompatibility = JavaVersion.VERSION_17
+    }
+    kotlinOptions {
+        jvmTarget = "17"
+    }
+    buildFeatures {
+        compose = true
+    }
+    testOptions {
+        unitTests.isReturnDefaultValues = true
+    }
+    composeOptions {
+        // Must track the Kotlin version exactly: 1.5.15 <-> Kotlin 1.9.25
+        kotlinCompilerExtensionVersion = "1.5.15"
+    }
+    packaging {
+        resources {
+            pickFirsts.add("META-INF/DEPENDENCIES")
+            pickFirsts.add("META-INF/LICENSE")
+            pickFirsts.add("META-INF/LICENSE.txt")
+            pickFirsts.add("META-INF/license.txt")
+            pickFirsts.add("META-INF/NOTICE")
+            pickFirsts.add("META-INF/NOTICE.txt")
+            pickFirsts.add("META-INF/notice.txt")
+            pickFirsts.add("META-INF/INDEX.LIST")
+        }
+    }
+}
+
+dependencies {
+    implementation("androidx.core:core-ktx:1.13.1")
+    implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.8.2")
+    implementation("androidx.activity:activity-compose:1.9.0")
+    
+    // Jetpack Compose BOM
+    val composeBom = platform("androidx.compose:compose-bom:2024.06.00")
+    implementation(composeBom)
+    implementation("androidx.compose.ui:ui")
+    implementation("androidx.compose.ui:ui-graphics")
+    implementation("androidx.compose.ui:ui-tooling-preview")
+    implementation("androidx.compose.material3:material3")
+    implementation("androidx.compose.material:material-icons-extended")
+
+    // Retrofit2 & OkHttp & Gson
+    implementation("com.squareup.retrofit2:retrofit:2.11.0")
+    implementation("com.squareup.retrofit2:converter-gson:2.11.0")
+    implementation("com.squareup.okhttp3:okhttp:4.12.0")
+
+    // Room Database
+    val room_version = "2.6.1"
+    implementation("androidx.room:room-runtime:$room_version")
+    implementation("androidx.room:room-ktx:$room_version")
+    // Without this, @Database/@Dao are never processed and Room cannot build.
+    ksp("androidx.room:room-compiler:$room_version")
+
+    // DataStore Preferences
+    implementation("androidx.datastore:datastore-preferences:1.1.1")
+
+    // Local JVM unit tests (src/test). Required for HybridIntentRouterTest.
+    // testOptions.isReturnDefaultValues avoids "not mocked" errors from Android
+    // framework classes touched indirectly during the rule-based path.
+    testImplementation("junit:junit:4.13.2")
+}

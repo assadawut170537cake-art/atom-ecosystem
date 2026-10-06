@@ -1,0 +1,4 @@
+<resources>
+    <string name="app_name">ATOM</string>
+    <string name="accessibility_description">อนุญาตให้ ATOM ควบคุมแอปตามคำสั่งของผู้ใช้</string>
+</resources>
