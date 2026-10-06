@@ -67,6 +67,20 @@ class CloudApi {
     return (b as Map<String, dynamic>)['history'] as List<dynamic>;
   }
 
+  Future<List<dynamic>> getProviders(String customBaseUrl, String customSecret) async {
+    final baseUrlUse = customBaseUrl.endsWith('/') ? customBaseUrl.substring(0, customBaseUrl.length - 1) : customBaseUrl;
+    final r = await http.get(
+      Uri.parse('$baseUrlUse/api/v1/providers'),
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Atom-Secret': customSecret,
+      },
+    );
+    _throwOnError(r);
+    final b = jsonDecode(r.body);
+    return (b as Map<String, dynamic>)['providers'] as List<dynamic>;
+  }
+
   Future<Map<String, dynamic>> cortexTurn(String session, String message, String forceSpeaker) async {
     final r = await http.post(
       Uri.parse(_url('/api/v1/cortex/turn')),

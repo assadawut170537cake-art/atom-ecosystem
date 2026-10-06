@@ -27,6 +27,32 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   String _lastTranscript = 'แตะที่ลูกแก้ว หรือปุ่มไมค์ด้านล่างเพื่อเริ่มพูด';
   String _lastAIResponse = '';
+  List<String> _availableModels = [];
+  bool _isLoadingModels = false;
+  String _selectedModel = '';
+
+  Future<void> _fetchModels(String baseUrl, String secret) async {
+    if (baseUrl.isEmpty || secret.isEmpty) return;
+    setState(() => _isLoadingModels = true);
+    try {
+      final models = await widget.agents.api?.getProviders(baseUrl, secret);
+      if (models != null && models.isNotEmpty) {
+        setState(() {
+          _availableModels = models.cast<String>();
+          if (!_availableModels.contains(_selectedModel)) {
+            _selectedModel = _availableModels.first;
+          }
+        });
+      }
+    } catch (e) {
+      debugPrint('Error fetching models: $e');
+      setState(() {
+        _availableModels = [];
+      });
+    } finally {
+      if (mounted) setState(() => _isLoadingModels = false);
+    }
+  }
 
   Future<void> _handleVoiceResult(String text) async {
     if (!mounted) return;
@@ -58,8 +84,6 @@ class _HomeScreenState extends State<HomeScreen> {
     setState(() => _lastAIResponse = reply);
     await widget.agents.voice.speak(reply);
   }
-
-  // removed _localReply
 
   Future<void> _switch(BuildContext ctx, String id) async {
     final messenger = ScaffoldMessenger.of(ctx);
@@ -123,50 +147,102 @@ class _HomeScreenState extends State<HomeScreen> {
     final secretController = TextEditingController(text: widget.agents.secret);
     final messenger = ScaffoldMessenger.of(ctx);
 
+    // Initial fetch if already configured
+    if (urlController.text.isNotEmpty && secretController.text.isNotEmpty) {
+      _fetchModels(urlController.text, secretController.text);
+    }
+
     final saved = await showDialog<bool>(
       context: ctx,
-      builder: (_) => AlertDialog(
-        backgroundColor: const Color(0xFF141414),
-        title: const Text(
-          'ตั้งค่าการเชื่อมต่อ Cloud',
-          style: TextStyle(color: Colors.white),
-        ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(
-              controller: urlController,
-              style: const TextStyle(color: Colors.white),
-              decoration: const InputDecoration(
-                labelText: 'Cloud URL',
-                labelStyle: TextStyle(color: Colors.white70),
-                hintText: 'https://assadawut-jarvis.online',
+      builder: (BuildContext dialogContext) {
+        return StatefulBuilder(builder: (context, setStateDialog) {
+          return AlertDialog(
+            backgroundColor: const Color(0xFF141414),
+            title: const Text(
+              'ตั้งค่าการเชื่อมต่อ Cloud',
+              style: TextStyle(color: Colors.white),
+            ),
+            content: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  TextField(
+                    controller: urlController,
+                    style: const TextStyle(color: Colors.white),
+                    decoration: const InputDecoration(
+                      labelText: 'Cloud URL',
+                      labelStyle: TextStyle(color: Colors.white70),
+                      hintText: 'https://assadawut-jarvis.online',
+                    ),
+                    onChanged: (v) {
+                      if (v.isNotEmpty && secretController.text.isNotEmpty) {
+                        _fetchModels(v, secretController.text).then((_) => setStateDialog(() {}));
+                      }
+                    },
+                  ),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: secretController,
+                    obscureText: true,
+                    style: const TextStyle(color: Colors.white),
+                    decoration: const InputDecoration(
+                      labelText: 'ATOM Secret (X-Atom-Secret)',
+                      labelStyle: TextStyle(color: Colors.white70),
+                      hintText: 'ใส่คีย์ความลับ',
+                    ),
+                    onChanged: (v) {
+                      if (v.isNotEmpty && urlController.text.isNotEmpty) {
+                        _fetchModels(urlController.text, v).then((_) => setStateDialog(() {}));
+                      }
+                    },
+                  ),
+                  const SizedBox(height: 24),
+                  const Text('โมเดลที่ใช้งานได้:', style: TextStyle(color: Colors.white70)),
+                  const SizedBox(height: 8),
+                  if (_isLoadingModels)
+                    const Center(child: CircularProgressIndicator())
+                  else if (_availableModels.isEmpty)
+                    const Text('ไม่พบโมเดล หรือการเชื่อมต่อผิดพลาด', style: TextStyle(color: Colors.redAccent))
+                  else
+                    DropdownButtonFormField<String>(
+                      value: _selectedModel.isNotEmpty && _availableModels.contains(_selectedModel) ? _selectedModel : _availableModels.first,
+                      dropdownColor: const Color(0xFF1F1F1F),
+                      style: const TextStyle(color: Colors.white),
+                      decoration: InputDecoration(
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      ),
+                      items: _availableModels.map((model) {
+                        return DropdownMenuItem(
+                          value: model,
+                          child: Text(model),
+                        );
+                      }).toList(),
+                      onChanged: (val) {
+                        if (val != null) {
+                          setStateDialog(() {
+                            _selectedModel = val;
+                          });
+                        }
+                      },
+                    ),
+                ],
               ),
             ),
-            const SizedBox(height: 12),
-            TextField(
-              controller: secretController,
-              obscureText: true,
-              style: const TextStyle(color: Colors.white),
-              decoration: const InputDecoration(
-                labelText: 'ATOM Secret (X-Atom-Secret)',
-                labelStyle: TextStyle(color: Colors.white70),
-                hintText: 'ใส่คีย์ความลับ',
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(dialogContext, false),
+                child: const Text('ยกเลิก'),
               ),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('ยกเลิก'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('บันทึก'),
-          ),
-        ],
-      ),
+              FilledButton(
+                onPressed: () => Navigator.pop(dialogContext, true),
+                child: const Text('บันทึก'),
+              ),
+            ],
+          );
+        });
+      },
     );
 
     if (saved == true) {
@@ -174,6 +250,7 @@ class _HomeScreenState extends State<HomeScreen> {
         urlController.text.trim(),
         secretController.text.trim(),
       );
+      // In a real app, you might save _selectedModel to preferences and send it in API calls.
       messenger.showSnackBar(
         const SnackBar(content: Text('บันทึกการตั้งค่าการเชื่อมต่อแล้ว')),
       );
