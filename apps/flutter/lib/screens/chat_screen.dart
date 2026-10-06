@@ -60,10 +60,13 @@ class _ChatScreenState extends State<ChatScreen> {
     });
     _ctl.clear();
 
-    final reply = _localReply(t);
+    final pipeline = PipelineCoordinator();
+    final res = await pipeline.processPipeline(t);
+    String reply = res.message;
 
     try {
       if (api != null && api.secret.isNotEmpty) {
+        // We still log to cloud history if needed
         await api.chatAppend(_session, 'user', t);
         await api.chatAppend(_session, 'assistant', reply);
       }
@@ -80,16 +83,7 @@ class _ChatScreenState extends State<ChatScreen> {
     }
   }
 
-  String _localReply(String t) {
-    switch (widget.agents.agentId) {
-      case 'friday':
-        return 'รับทราบค่ะลูกพี่ บันทึก "$t" เรียบร้อยแล้วค่ะ';
-      case 'ultron':
-        return 'รับคำสั่ง จะลุยให้ แต่ขั้นแตะระบบจริงต้องกดอนุมัติบนมือถือก่อน';
-      default:
-        return 'อะตอมรับเรื่องแล้วครับลูกพี่ "$t"';
-    }
-  }
+  // removed _localReply
 
   @override
   void dispose() {

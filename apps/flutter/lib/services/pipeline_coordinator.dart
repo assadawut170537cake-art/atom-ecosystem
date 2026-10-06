@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
+import 'package:google_generative_ai/google_generative_ai.dart';
 
 enum ExecutionMode { localFirst, cloudNative }
 
@@ -208,7 +209,7 @@ class PipelineCoordinator {
         },
         body: jsonEncode({
           'q': decision.extractedQuery,
-          'containerTag': 'atom-flutter-app',
+          'containerTag': 'jarvis_core',
         }),
       );
 
@@ -234,7 +235,7 @@ class PipelineCoordinator {
     return [];
   }
 
-  Future<bool> ingestMemory(String content, {String customId = ''}) async {
+  Future<bool> ingestMemory(String content, {String customId = '', String containerTag = 'jarvis_core', String taskType = 'memory'}) async {
     const apiKey = String.fromEnvironment('SUPERMEMORY_API_KEY');
     if (apiKey.isEmpty) {
       debugPrint('No SUPERMEMORY_API_KEY set. Cannot ingest memory.');
@@ -250,8 +251,8 @@ class PipelineCoordinator {
         },
         body: jsonEncode({
           'content': content,
-          'containerTag': 'jarvis_core',
-          'taskType': 'memory',
+          'containerTag': containerTag,
+          'taskType': taskType,
           'dreaming': 'instant',
           if (customId.isNotEmpty) 'customId': customId,
         }),
@@ -276,31 +277,68 @@ class PipelineCoordinator {
     ExecutionMode mode,
   ) async {
     final relevant = records.where((r) => r.similarityScore >= relevanceThreshold).toList();
-
+    String contextStr = "";
+    
     if (relevant.isNotEmpty) {
-      final sb = StringBuffer('พบข้อมูลที่เกี่ยวข้องในระบบความจำดังนี้ค่ะ:\n');
+      final sb = StringBuffer('ข้อมูลอ้างอิงจาก Supermemory:\n');
       for (var i = 0; i < relevant.length; i++) {
-        sb.writeln('${i + 1}. ${relevant[i].content} (ความเหมือน: ${(relevant[i].similarityScore * 100).toStringAsFixed(0)}%)');
+        sb.writeln('- ${relevant[i].content}');
       }
+      contextStr = sb.toString();
+    }
 
+    const apiKey = String.fromEnvironment('GEMINI_API_KEY');
+    if (apiKey.isEmpty) {
       return PipelineExecutionResult(
-        success: true,
-        message: sb.toString().trim(),
-        executedStep: 'STEP_4_VECTOR_MEMORY_RETRIEVAL',
+        success: false,
+        message: 'ระบบขาด GEMINI_API_KEY กรุณาเพิ่มคีย์ก่อนใช้งานครับบอส',
+        executedStep: 'STEP_4_LLM_GENERATION',
         modeUsed: mode,
         confidenceScore: decision.confidenceScore,
         contextData: relevant,
       );
     }
 
-    return PipelineExecutionResult(
-      success: true,
-      message: 'อะตอม/ไฟรเดย์ รับทราบคำสั่งแล้วค่ะ: "$prompt"',
-      executedStep: 'STEP_4_LLM_GENERATION',
-      modeUsed: mode,
-      confidenceScore: decision.confidenceScore,
-      contextData: records,
-    );
+    try {
+      final model = GenerativeModel(
+        model: 'gemini-1.5-flash',
+        apiKey: apiKey,
+        systemInstruction: Content.system('''
+คุณคือผู้ช่วย AI ส่วนตัวของ "อัษฎาวุธ เมืองซอง (ลูกพี่/บอส)" ทำงานร่วมกับระบบนิเวศ J.A.R.V.I.S. และ F.R.I.D.A.Y.
+หน้าที่ของคุณคือตอบคำถามและทำงานตามที่ได้รับมอบหมาย โดยใช้ข้อมูลอ้างอิงจากความจำในอดีต (ถ้ามี)
+ตอบให้กระชับ ชาญฉลาด และเรียกผู้ใช้ว่า "ลูกพี่" หรือ "บอส" เสมอ
+'''),
+      );
+
+      final fullPrompt = contextStr.isNotEmpty 
+          ? '$contextStr\n\nคำสั่งล่าสุดจากบอส: $prompt'
+          : 'คำสั่งล่าสุดจากบอส: $prompt';
+
+      final response = await model.generateContent([Content.text(fullPrompt)]);
+      final reply = response.text ?? 'ไม่มีการตอบสนองจากสมองหลักครับ';
+
+      if (reply.isNotEmpty) {
+         await ingestMemory("สรุปการตอบกลับ: $reply", containerTag: "jarvis_core", taskType: "memory");
+      }
+
+      return PipelineExecutionResult(
+        success: true,
+        message: reply,
+        executedStep: 'STEP_4_LLM_GENERATION',
+        modeUsed: mode,
+        confidenceScore: decision.confidenceScore,
+        contextData: relevant,
+      );
+    } catch (e) {
+      return PipelineExecutionResult(
+        success: false,
+        message: 'เกิดข้อผิดพลาดในการเชื่อมต่อ Gemini: $e',
+        executedStep: 'STEP_4_LLM_GENERATION',
+        modeUsed: mode,
+        confidenceScore: 0.0,
+        contextData: relevant,
+      );
+    }
   }
 
   Future<PipelineExecutionResult> _processFallbackLocalPipeline(

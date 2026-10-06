@@ -3,8 +3,9 @@ import 'package:flutter/material.dart';
 import '../core/config.dart';
 import '../services/agent_state.dart';
 import '../services/master_gate.dart';
-import '../services/pipeline_coordinator.dart';
 import '../widgets/agent_orb.dart';
+import '../widgets/memory_save_button.dart';
+import '../widgets/memory_settings_form.dart';
 import 'chat_screen.dart';
 
 // OLED black home: interactive orb + global voice brain + settings.
@@ -25,37 +26,40 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   String _lastTranscript = 'แตะที่ลูกแก้ว หรือปุ่มไมค์ด้านล่างเพื่อเริ่มพูด';
+  String _lastAIResponse = '';
 
   Future<void> _handleVoiceResult(String text) async {
     if (!mounted) return;
-    setState(() => _lastTranscript = 'คุณ: "$text"');
-
+    setState(() {
+      _lastTranscript = text;
+      _lastAIResponse = 'กำลังประมวลผล...';
+    });
+    
     final api = widget.agents.api;
-    final reply = _localReply(text);
-
+    String reply = '';
+    
     try {
       if (api != null && api.secret.isNotEmpty) {
         final session = 'mobile-${widget.agents.agentId}';
-        await api.chatAppend(session, 'user', text);
-        await api.chatAppend(session, 'assistant', reply);
+        final response = await api.cortexTurn(session, text, widget.agents.agentId);
+        reply = response['reply'] ?? '';
+      } else {
+        reply = 'ไม่ได้เชื่อมต่อกับระบบคลาวด์ค่ะ กรุณาตั้งค่า API Key';
       }
-    } catch (_) {}
+    } catch (e) {
+      reply = 'เกิดข้อผิดพลาดในการเชื่อมต่อ: $e';
+    }
+
+    if (reply.isEmpty) {
+      reply = 'ขออภัยค่ะ ระบบไม่สามารถประมวลผลได้ในขณะนี้';
+    }
 
     if (!mounted) return;
-    setState(() => _lastTranscript = '${widget.agents.agent.name}: "$reply"');
+    setState(() => _lastAIResponse = reply);
     await widget.agents.voice.speak(reply);
   }
 
-  String _localReply(String t) {
-    switch (widget.agents.agentId) {
-      case 'friday':
-        return 'รับทราบค่ะลูกพี่ บันทึก "$t" เรียบร้อยแล้วค่ะ';
-      case 'ultron':
-        return 'รับคำสั่ง จะลุยให้ แต่ขั้นแตะระบบจริงต้องกดอนุมัติบนมือถือก่อน';
-      default:
-        return 'อะตอมรับเรื่องแล้วครับลูกพี่ "$t"';
-    }
-  }
+  // removed _localReply
 
   Future<void> _switch(BuildContext ctx, String id) async {
     final messenger = ScaffoldMessenger.of(ctx);
@@ -216,7 +220,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                   child: ListenableBuilder(
                     listenable: voice,
-                    builder: (_, _) => AgentOrb(
+                    builder: (_, __) => AgentOrb(
                       agent: widget.agents.agent,
                       speaking: widget.agents.speaking,
                       muted: widget.agents.muted,
@@ -224,19 +228,16 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                 ),
                 const SizedBox(height: 16),
-
+                
                 // Voice status indicator
                 ListenableBuilder(
                   listenable: voice,
-                  builder: (_, _) {
+                  builder: (_, __) {
                     if (voice.listening) {
                       return Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 12,
-                          vertical: 6,
-                        ),
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                         decoration: BoxDecoration(
-                          color: Colors.red.withValues(alpha: 0.2),
+                          color: Colors.red.withOpacity(0.2),
                           borderRadius: BorderRadius.circular(16),
                           border: Border.all(color: Colors.redAccent),
                         ),
@@ -247,11 +248,7 @@ class _HomeScreenState extends State<HomeScreen> {
                             SizedBox(width: 6),
                             Text(
                               'กำลังฟังเสียงของคุณ...',
-                              style: TextStyle(
-                                color: Colors.redAccent,
-                                fontSize: 13,
-                                fontWeight: FontWeight.bold,
-                              ),
+                              style: TextStyle(color: Colors.redAccent, fontSize: 13, fontWeight: FontWeight.bold),
                             ),
                           ],
                         ),
@@ -259,12 +256,9 @@ class _HomeScreenState extends State<HomeScreen> {
                     }
                     if (widget.agents.speaking) {
                       return Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 12,
-                          vertical: 6,
-                        ),
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                         decoration: BoxDecoration(
-                          color: a.color.withValues(alpha: 0.2),
+                          color: a.color.withOpacity(0.2),
                           borderRadius: BorderRadius.circular(16),
                           border: Border.all(color: a.color),
                         ),
@@ -275,11 +269,7 @@ class _HomeScreenState extends State<HomeScreen> {
                             const SizedBox(width: 6),
                             Text(
                               '${a.name} กำลังพูด...',
-                              style: TextStyle(
-                                color: a.color,
-                                fontSize: 13,
-                                fontWeight: FontWeight.bold,
-                              ),
+                              style: TextStyle(color: a.color, fontSize: 13, fontWeight: FontWeight.bold),
                             ),
                           ],
                         ),
@@ -287,52 +277,52 @@ class _HomeScreenState extends State<HomeScreen> {
                     }
                     return Text(
                       '⚡ แตะลูกแก้ว Orb หรือปุ่มไมค์เพื่อสั่งงานด้วยเสียง',
-                      style: TextStyle(
-                        color: Colors.white.withValues(alpha: 0.6),
-                        fontSize: 12,
-                      ),
+                      style: TextStyle(color: Colors.white.withOpacity(0.6), fontSize: 12),
                     );
                   },
                 ),
-
+                
                 const SizedBox(height: 16),
-
-                // Live transcript card
-                GestureDetector(
-                  onLongPress: () async {
-                    if (_lastTranscript.contains('แตะที่ลูกแก้ว')) return;
-                    final pipeline = PipelineCoordinator();
-                    final success = await pipeline.ingestMemory(
-                      _lastTranscript,
-                      customId: 'voice_${DateTime.now().millisecondsSinceEpoch}',
-                    );
-                    if (context.mounted) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: Text(success 
-                              ? '✅ บันทึกคำสั่งเสียงลง Supermemory สำเร็จ!' 
-                              : '❌ ไม่สามารถบันทึกความจำได้ (ตรวจสอบ API Key)'),
+                
+                // Live transcript & Memory Save Button
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF141414),
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: Colors.white12),
+                  ),
+                  child: Column(
+                    children: [
+                      if (_lastTranscript.isNotEmpty) ...[
+                        Text(
+                          _lastTranscript,
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(color: Colors.white70, fontSize: 14),
                         ),
-                      );
-                    }
-                  },
-                  child: Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF141414),
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: Colors.white12),
-                    ),
-                    child: Text(
-                      _lastTranscript,
-                      textAlign: TextAlign.center,
-                      style: const TextStyle(color: Colors.white, fontSize: 14),
-                    ),
+                        const SizedBox(height: 8),
+                      ],
+                      if (_lastAIResponse.isNotEmpty) ...[
+                        Text(
+                          '${a.name}: "$_lastAIResponse"',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(color: a.color, fontSize: 14, fontWeight: FontWeight.w500),
+                        ),
+                        const SizedBox(height: 16),
+                        MemorySaveButton(textToSave: _lastAIResponse),
+                      ],
+                    ],
                   ),
                 ),
 
                 const SizedBox(height: 20),
+                
+                // Memory Settings Custom Input Form
+                const MemorySettingsForm(),
+                
+                const SizedBox(height: 20),
+
                 Wrap(
                   spacing: 8,
                   alignment: WrapAlignment.center,
@@ -358,10 +348,8 @@ class _HomeScreenState extends State<HomeScreen> {
                   children: [
                     ListenableBuilder(
                       listenable: voice,
-                      builder: (_, _) => FloatingActionButton.extended(
-                        backgroundColor: voice.listening
-                            ? Colors.redAccent
-                            : a.color,
+                      builder: (_, __) => FloatingActionButton.extended(
+                        backgroundColor: voice.listening ? Colors.redAccent : a.color,
                         onPressed: () => voice.toggleListen(
                           onResult: _handleVoiceResult,
                           askMasterKey: widget.askMasterKey,
@@ -372,10 +360,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         ),
                         label: Text(
                           voice.listening ? 'กำลังฟัง...' : 'กดเพื่อพูด',
-                          style: const TextStyle(
-                            color: Colors.black,
-                            fontWeight: FontWeight.bold,
-                          ),
+                          style: const TextStyle(color: Colors.black, fontWeight: FontWeight.bold),
                         ),
                       ),
                     ),

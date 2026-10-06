@@ -59,14 +59,14 @@ class VoiceBrain extends ChangeNotifier {
     String text, {
     required Future<bool> Function() askMasterKey,
   }) async {
-    final t = text.toLowerCase();
-    if (t.contains('ไฟรเดย์') || t.contains('friday')) {
+    final t = text.toLowerCase().replaceAll('.', '').replaceAll(' ', '');
+    if (t.contains('ไฟรเดย') || t.contains('friday') || t.contains('ฟรายเดย')) {
       await stopSpeak();
       await agents.switchAgent('friday');
       await speak('ต่อสายให้ไฟรเดย์แล้วค่ะลูกพี่');
       return 'friday';
     }
-    if (t.contains('อัลตรอน') || t.contains('ultron')) {
+    if (t.contains('อัลตรอน') || t.contains('ultron') || t.contains('อัลตอล') || t.contains('เอาตรอน')) {
       final ok = await askMasterKey();
       if (!ok) {
         await speak('รหัสมาสเตอร์ไม่ถูกต้องค่ะลูกพี่');
@@ -77,7 +77,7 @@ class VoiceBrain extends ChangeNotifier {
       await speak('อัลตรอนพร้อมลุย สั่งมา');
       return 'ultron';
     }
-    if (t.contains('อะตอม') || t.contains('atom')) {
+    if (t.contains('อะตอม') || t.contains('atom') || t.contains('กลับมา')) {
       await stopSpeak();
       await agents.switchAgent('atom');
       await speak('กลับมาอะตอมแล้วครับลูกพี่');

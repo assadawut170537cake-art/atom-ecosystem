@@ -67,6 +67,20 @@ class CloudApi {
     return (b as Map<String, dynamic>)['history'] as List<dynamic>;
   }
 
+  Future<Map<String, dynamic>> cortexTurn(String session, String message, String forceSpeaker) async {
+    final r = await http.post(
+      Uri.parse(_url('/api/v1/cortex/turn')),
+      headers: _h,
+      body: jsonEncode({
+        'session_id': session,
+        'message': message,
+        'force_speaker': forceSpeaker,
+      }),
+    );
+    _throwOnError(r);
+    return jsonDecode(r.body) as Map<String, dynamic>;
+  }
+
   Future<Map<String, dynamic>> voiceHook() async {
     final r =
         await http.get(Uri.parse(_url('/voice/session-hook')), headers: _h);
